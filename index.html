@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>miobyDoTS 経営ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #263349;
+    --border: #334155;
+    --accent: #f59e0b;
+    --accent2: #10b981;
+    --accent3: #3b82f6;
+    --accent4: #8b5cf6;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --lunch: #f59e0b;
+    --cafe: #10b981;
+    --dinner: #3b82f6;
+    --other: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', -apple-system, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-dot {
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    color: #000;
+  }
+  .logo-text h1 { font-size: 18px; font-weight: 700; letter-spacing: .04em; }
+  .logo-text p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .header-meta { text-align: right; }
+  .header-meta .date { font-size: 11px; color: var(--text-muted); }
+  .header-meta .notice {
+    display: inline-block;
+    background: rgba(245,158,11,.15);
+    border: 1px solid rgba(245,158,11,.4);
+    color: var(--accent);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-top: 4px;
+  }
+
+  /* ── Main ── */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent-color, var(--accent));
+  }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .kpi-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .badge-green { background: rgba(16,185,129,.2); color: #34d399; }
+  .badge-yellow { background: rgba(245,158,11,.2); color: #fbbf24; }
+  .badge-blue { background: rgba(59,130,246,.2); color: #93c5fd; }
+
+  /* ── Section ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Chart cards ── */
+  .chart-row {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .chart-row-2 { grid-template-columns: 2fr 1fr; }
+  .chart-row-1 { grid-template-columns: 1fr; }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .chart-wrap {
+    position: relative;
+  }
+
+  /* ── Month selector ── */
+  .month-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .month-tab {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: inherit;
+  }
+  .month-tab:hover { border-color: var(--accent); color: var(--text); }
+  .month-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+  .month-tab.no-data {
+    opacity: .4;
+    cursor: default;
+  }
+
+  /* ── Detail row ── */
+  .detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  /* ── Product table ── */
+  .product-list { list-style: none; }
+  .product-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .product-item:last-child { border-bottom: none; }
+  .product-rank {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .product-rank.rank-1 { background: #d97706; color: #fff; }
+  .product-rank.rank-2 { background: #64748b; color: #fff; }
+  .product-rank.rank-3 { background: #92400e; color: #fff; }
+  .product-name { flex: 1; font-size: 12px; line-height: 1.3; }
+  .product-bar-wrap { width: 80px; }
+  .product-bar-bg { background: var(--border); height: 4px; border-radius: 2px; }
+  .product-bar-fill {
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+  .product-qty { font-size: 11px; color: var(--text-muted); width: 36px; text-align: right; flex-shrink: 0; }
+
+  /* ── Daily heatmap ── */
+  .daily-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .day-header {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    padding-bottom: 4px;
+  }
+  .day-cell {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    cursor: default;
+    transition: transform .15s;
+    position: relative;
+  }
+  .day-cell:hover { transform: scale(1.15); z-index: 10; }
+  .day-cell.empty { background: transparent; }
+  .day-num { font-weight: 700; font-size: 10px; }
+  .day-sales { opacity: .8; }
+
+  /* ── Slot legend ── */
+  .slot-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .slot-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .slot-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Data note ── */
+  .data-note {
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.2);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .data-note strong { color: var(--accent); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row-2 { grid-template-columns: 1fr; }
+    .detail-row { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    main { padding: 16px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .detail-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot">D</div>
+    <div class="logo-text">
+      <h1>miobyDoTS</h1>
+      <p>経営ダッシュボード — Usen レジデータ 自動集計</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="date" id="headerDate"></div>
+    <div class="notice">📊 実データ連携済み</div>
+  </div>
+</header>
+
+<main>
+
+  <div class="data-note">
+    <span>ℹ️</span>
+    <span>
+      <strong>実データ</strong>: Usenレジ情報（2025年7月〜2026年5月）を自動集計。
+      1月はデータ未格納、3月はUsenファイルに2月分が収録（ソース側の仕様）、4月はGW分を含む。
+    </span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="section-label">全期間 KPI（2025年7月〜2026年5月）</div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Monthly trend -->
+  <div class="section-label">月次トレンド</div>
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-title">月次売上・客数推移</div>
+      <div class="chart-subtitle">棒グラフ：売上金額　折れ線：来客数</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">客単価推移</div>
+      <div class="chart-subtitle">月ごとの平均客単価 (円)</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="spendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time slot trend -->
+  <div class="section-label">時間帯別分析</div>
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-title">時間帯別売上推移（月次）</div>
+      <div class="chart-subtitle">ランチ / カフェ / ディナー の月別積み上げ</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="slotTrendChart"></canvas>
+      </div>
+      <div class="slot-legend">
+        <div class="slot-item"><div class="slot-dot" style="background:var(--lunch)"></div>ランチ（11:00〜14:30）</div>
+        <div class="slot-item"><div class="slot-dot" style="background:var(--cafe)"></div>カフェ（14:30〜18:00）</div>
+        <div class="slot-item"><div class="slot-dot" style="background:var(--dinner)"></div>ディナー（18:00〜22:30）</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">カテゴリ構成（全期間）</div>
+      <div class="chart-subtitle">フード / ドリンク / スタンドッツ / 物販 etc.</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Month detail -->
+  <div class="section-label">月別詳細</div>
+  <div class="month-tabs" id="monthTabs"></div>
+
+  <div class="detail-row">
+    <!-- Daily chart -->
+    <div class="chart-card" style="grid-column: span 2">
+      <div class="chart-title" id="detailTitle">日次売上</div>
+      <div class="chart-subtitle" id="detailSubtitle"></div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Time slot donut -->
+    <div class="chart-card">
+      <div class="chart-title">時間帯構成</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="slotDonut"></canvas>
+      </div>
+      <div id="slotStats" style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- Products -->
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-title" id="productTitle">TOP 10 商品</div>
+      <div class="chart-subtitle">売上金額ランキング（選択月）</div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="productChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title" id="productListTitle">商品リスト</div>
+      <ul class="product-list" id="productList"></ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+//  Data loading
+// ============================================================
+fetch('real_data.json')
+  .then(r => r.json())
+  .then(buildDashboard)
+  .catch(() => {
+    // fallback for local file:// loading — data should be injected below
+    console.error('fetch failed, check CORS/hosting');
+  });
+
+function buildDashboard(RAW) {
+  const MONTH_ORDER = [
+    '2025/07','2025/08','2025/09','2025/10','2025/11','2025/12',
+    '2026/01','2026/02','2026/03','2026/04','2026/05'
+  ];
+  const LABELS = {
+    '2025/07':'7月','2025/08':'8月','2025/09':'9月','2025/10':'10月',
+    '2025/11':'11月','2025/12':'12月','2026/01':'1月*',
+    '2026/02':'2月','2026/03':'3月†','2026/04':'4月','2026/05':'5月▲'
+  };
+
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'});
+
+  // Filter months with data
+  const months = MONTH_ORDER.map(k => RAW[k]).filter(Boolean);
+  const validMonths = months.filter(m => m.sales > 0);
+
+  // ── KPI Cards ─────────────────────────────────────────────
+  const totalSales     = validMonths.reduce((s,m) => s + m.sales, 0);
+  const totalCustomers = validMonths.reduce((s,m) => s + m.customers, 0);
+  const avgMonthly     = Math.round(totalSales / validMonths.length);
+  const avgSpend       = Math.round(totalSales / totalCustomers);
+  const maxMonth       = validMonths.reduce((a,b) => a.sales > b.sales ? a : b);
+
+  const kpis = [
+    { label:'累計売上（10ヶ月）', value: fmtYen(totalSales), sub: `最高月: ${LABELS[maxMonth.month]} ¥${fmtNum(maxMonth.sales)}`, badge: null, color: '#f59e0b' },
+    { label:'月平均売上',         value: fmtYen(avgMonthly), sub: `有効データ月: ${validMonths.length}ヶ月`, badge: null, color: '#10b981' },
+    { label:'累計来客数',         value: fmtNum(totalCustomers) + '人', sub: `月平均: ${fmtNum(Math.round(totalCustomers/validMonths.length))}人/月`, badge: null, color: '#3b82f6' },
+    { label:'全体平均客単価',     value: '¥' + fmtNum(avgSpend), sub: `最高月: ${LABELS[maxMonth.month]}（¥${fmtNum(maxMonth.avg_spend)}）`, badge: null, color: '#8b5cf6' },
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  kpis.forEach(k => {
+    const el = document.createElement('div');
+    el.className = 'kpi-card';
+    el.style.setProperty('--accent-color', k.color);
+    el.innerHTML = `
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" style="color:${k.color}">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    `;
+    grid.appendChild(el);
+  });
+
+  // ── Monthly Trend Chart ────────────────────────────────────
+  const monthLabels = MONTH_ORDER.map(k => LABELS[k]);
+  const salesData   = MONTH_ORDER.map(k => RAW[k]?.sales || 0);
+  const custData    = MONTH_ORDER.map(k => RAW[k]?.customers || 0);
+
+  chartDefaults();
+
+  new Chart(document.getElementById('monthlyChart'), {
+    data: {
+      labels: monthLabels,
+      datasets: [
+        {
+          type: 'bar',
+          label: '売上（円）',
+          data: salesData,
+          backgroundColor: MONTH_ORDER.map(k => RAW[k]?.sales > 0 ? 'rgba(245,158,11,.7)' : 'rgba(100,116,139,.3)'),
+          yAxisID: 'y',
+          borderRadius: 4,
+        },
+        {
+          type: 'line',
+          label: '来客数',
+          data: custData,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,.1)',
+          pointBackgroundColor: '#3b82f6',
+          pointRadius: 4,
+          tension: .3,
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                 tooltip: { callbacks: { label: ctx => ctx.dataset.yAxisID === 'y' ? `¥${fmtNum(ctx.raw)}` : `${fmtNum(ctx.raw)}人` } } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' }, position: 'left' },
+        y2: { ticks: { color: '#3b82f6', font: { size: 10 }, callback: v => `${v}人` }, grid: { display: false }, position: 'right' },
+      }
+    }
+  });
+
+  // ── Avg Spend ──────────────────────────────────────────────
+  new Chart(document.getElementById('spendChart'), {
+    type: 'line',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        data: MONTH_ORDER.map(k => RAW[k]?.avg_spend || null),
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139,92,246,.15)',
+        pointBackgroundColor: '#8b5cf6',
+        pointRadius: 5,
+        tension: .3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}` } } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${fmtNum(v)}` }, grid: { color: 'rgba(255,255,255,.04)' }, min: 0 }
+      }
+    }
+  });
+
+  // ── Slot Trend Stacked Bar ─────────────────────────────────
+  const slotColors = { 'ランチ': '#f59e0b', 'カフェ': '#10b981', 'ディナー': '#3b82f6', 'その他': '#475569' };
+  const slotKeys = ['ランチ', 'カフェ', 'ディナー', 'その他'];
+
+  new Chart(document.getElementById('slotTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: slotKeys.map(slot => ({
+        label: slot,
+        data: MONTH_ORDER.map(k => RAW[k]?.time_slots?.[slot]?.sales || 0),
+        backgroundColor: slotColors[slot],
+        stack: 's1',
+        borderRadius: slot === 'その他' ? 4 : 0,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { mode: 'index', callbacks: { label: ctx => `${ctx.dataset.label}: ¥${fmtNum(ctx.raw)}` } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#1e293b' } },
+        y: { stacked: true, ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
+      }
+    }
+  });
+
+  // ── Category Donut (all) ───────────────────────────────────
+  const catTotals = {};
+  validMonths.forEach(m => {
+    Object.entries(m.categories || {}).forEach(([cat, v]) => {
+      const label = normCat(cat);
+      catTotals[label] = (catTotals[label] || 0) + v.sales;
+    });
+  });
+  const catSorted = Object.entries(catTotals).sort((a,b) => b[1]-a[1]).slice(0,6);
+  const catColors = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#64748b'];
+
+  new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: {
+      labels: catSorted.map(([k]) => k),
+      datasets: [{ data: catSorted.map(([,v]) => v), backgroundColor: catColors, borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ` ¥${fmtNum(ctx.raw)} (${pct(ctx.raw, catSorted.reduce((s,[,v])=>s+v,0))}%)` } }
+      },
+      cutout: '62%'
+    }
+  });
+
+  // ── Month detail tabs ──────────────────────────────────────
+  let selectedMonth = '2026/05';
+  let dailyChart = null, slotDonut = null, productChart = null;
+
+  const tabBar = document.getElementById('monthTabs');
+  MONTH_ORDER.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'month-tab' + (RAW[k]?.sales === 0 ? ' no-data' : '') + (k === selectedMonth ? ' active' : '');
+    btn.textContent = LABELS[k];
+    btn.dataset.month = k;
+    if (RAW[k]?.sales > 0) {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.month-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedMonth = k;
+        renderDetail(k);
+      });
+    }
+    tabBar.appendChild(btn);
+  });
+
+  function renderDetail(month) {
+    const md = RAW[month];
+    if (!md || md.sales === 0) return;
+
+    document.getElementById('detailTitle').textContent = `日次売上（${LABELS[month]}）`;
+    document.getElementById('detailSubtitle').textContent =
+      `営業日数: ${md.days}日　月間売上: ¥${fmtNum(md.sales)}　来客数: ${fmtNum(md.customers)}人　客単価: ¥${fmtNum(md.avg_spend)}`;
+
+    // Daily bar
+    const dailyEntries = Object.entries(md.daily || {}).sort(([a],[b]) => a.localeCompare(b));
+    const dayLabels = dailyEntries.map(([d, v]) => `${parseInt(d.slice(-2))}日(${v.yobi})`);
+    const daySales  = dailyEntries.map(([,v]) => v.sales);
+    const maxSale   = Math.max(...daySales);
+
+    if (dailyChart) dailyChart.destroy();
+    dailyChart = new Chart(document.getElementById('dailyChart'), {
+      type: 'bar',
+      data: {
+        labels: dayLabels,
+        datasets: [{
+          data: daySales,
+          backgroundColor: daySales.map(s => `rgba(245,158,11,${0.3 + 0.7*(s/maxSale)})`),
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+                   tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}` } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { size: 9 }, maxRotation: 45 }, grid: { display: false } },
+          y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } }
+        }
+      }
+    });
+
+    // Slot donut
+    const slots = md.time_slots || {};
+    const slotData = slotKeys.map(s => slots[s]?.sales || 0);
+    const slotTotalSales = slotData.reduce((a,b) => a+b, 0);
+
+    if (slotDonut) slotDonut.destroy();
+    slotDonut = new Chart(document.getElementById('slotDonut'), {
+      type: 'doughnut',
+      data: {
+        labels: slotKeys,
+        datasets: [{ data: slotData, backgroundColor: slotKeys.map(s => slotColors[s]), borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+                   tooltip: { callbacks: { label: ctx => `${ctx.label}: ¥${fmtNum(ctx.raw)} (${pct(ctx.raw, slotTotalSales)}%)` } } },
+        cutout: '60%'
+      }
+    });
+
+    // Slot stats
+    const statsEl = document.getElementById('slotStats');
+    statsEl.innerHTML = '';
+    slotKeys.forEach(s => {
+      if (!slots[s]) return;
+      const el = document.createElement('div');
+      el.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:10px;';
+      el.innerHTML = `<div style="width:8px;height:8px;border-radius:2px;background:${slotColors[s]};flex-shrink:0"></div>
+        <div><span style="color:var(--text-muted)">${s}</span><br>
+        <strong style="font-size:12px">¥${fmtNum(slots[s].sales)}</strong></div>`;
+      statsEl.appendChild(el);
+    });
+
+    // Top products
+    const products = (md.top_products || []).slice(0, 10);
+    document.getElementById('productTitle').textContent = `TOP ${products.length} 商品（${LABELS[month]}）`;
+    document.getElementById('productListTitle').textContent = `商品リスト（${LABELS[month]}）`;
+
+    if (productChart) productChart.destroy();
+    productChart = new Chart(document.getElementById('productChart'), {
+      type: 'bar',
+      data: {
+        labels: products.map(p => p.name.length > 12 ? p.name.slice(0,12)+'…' : p.name),
+        datasets: [{
+          data: products.map(p => p.sales),
+          backgroundColor: 'rgba(139,92,246,.75)',
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+                   tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}（${products[ctx.dataIndex].qty}個）` } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
+          y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+        }
+      }
+    });
+
+    // Product list
+    const listEl = document.getElementById('productList');
+    listEl.innerHTML = '';
+    const maxSales = products[0]?.sales || 1;
+    products.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.className = 'product-item';
+      li.innerHTML = `
+        <div class="product-rank ${i<3?'rank-'+(i+1):''}">${i+1}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-bar-wrap">
+          <div class="product-bar-bg">
+            <div class="product-bar-fill" style="width:${pct(p.sales,maxSales)}%"></div>
+          </div>
+        </div>
+        <div class="product-qty">${p.qty}個</div>
+      `;
+      listEl.appendChild(li);
+    });
+  }
+
+  renderDetail(selectedMonth);
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function fmtNum(n) { return (n||0).toLocaleString('ja-JP'); }
+function fmtYen(n) {
+  if (n >= 100000000) return `¥${(n/100000000).toFixed(1)}億`;
+  if (n >= 10000000)  return `¥${(n/10000000).toFixed(1)}千万`;
+  if (n >= 1000000)   return `¥${(n/1000000).toFixed(1)}百万`;
+  return `¥${fmtNum(n)}`;
+}
+function pct(val, total) { return total ? Math.round(val/total*100) : 0; }
+function normCat(cat) {
+  if (!cat) return 'その他';
+  if (cat.includes('フード')) return 'フード';
+  if (cat.includes('ドリンク')) return 'ドリンク';
+  if (cat.includes('スタンドッツ')) return 'スタンドッツ';
+  if (cat.includes('物販')) return '物販';
+  return cat.length > 8 ? cat.slice(0,8) : cat;
+}
+
+function chartDefaults() {
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.borderColor = 'rgba(255,255,255,.06)';
+  Chart.defaults.font = { family: "'Hiragino Kaku Gothic ProN', -apple-system, sans-serif", size: 12 };
+}
+</script>
+</body>
+</html>
