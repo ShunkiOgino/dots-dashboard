@@ -316,6 +316,91 @@
   }
   .data-note strong { color: var(--accent); }
 
+  /* ── Source link bar ── */
+  .source-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .source-bar-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(16,185,129,.3);
+    color: #34d399;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background .2s;
+  }
+  .source-link:hover { background: rgba(16,185,129,.22); }
+  .source-link-none {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: .5;
+  }
+
+  /* ── Daily table ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin-top: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .daily-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .daily-table th {
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+  }
+  .daily-table th:hover { color: var(--text); }
+  .daily-table th.sort-asc::after { content: ' ▲'; font-size: 9px; }
+  .daily-table th.sort-desc::after { content: ' ▼'; font-size: 9px; }
+  .daily-table td {
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .daily-table tr:hover td { background: rgba(255,255,255,.03); }
+  .daily-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .daily-table td.yobi-sat { color: #60a5fa; }
+  .daily-table td.yobi-sun { color: #f87171; }
+  .daily-table .bar-cell { width: 80px; }
+  .inline-bar { height: 4px; border-radius: 2px; background: rgba(245,158,11,.6); display: inline-block; vertical-align: middle; transition: width .3s; }
+  .tfoot-row td { background: var(--surface2); font-weight: 700; border-top: 2px solid var(--border); }
+
   /* ── Responsive ── */
   @media (max-width: 1024px) {
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
@@ -406,13 +491,39 @@
   <div class="section-label">月別詳細</div>
   <div class="month-tabs" id="monthTabs"></div>
 
+  <!-- Source link bar -->
+  <div class="source-bar" id="sourceBar">
+    <div class="source-bar-label">
+      <span>📂</span>
+      <span id="sourceLabel">元データ（Usenレジ情報）</span>
+    </div>
+    <div id="sourceLink"></div>
+  </div>
+
   <div class="detail-row">
-    <!-- Daily chart -->
+    <!-- Daily chart + table -->
     <div class="chart-card" style="grid-column: span 2">
       <div class="chart-title" id="detailTitle">日次売上</div>
       <div class="chart-subtitle" id="detailSubtitle"></div>
       <div class="chart-wrap" style="height:180px">
         <canvas id="dailyChart"></canvas>
+      </div>
+      <!-- Daily table -->
+      <div class="table-wrap" style="max-height:320px; overflow-y:auto; margin-top:16px;">
+        <table class="daily-table" id="dailyTable">
+          <thead>
+            <tr>
+              <th data-col="date">日付</th>
+              <th data-col="yobi">曜日</th>
+              <th data-col="customers" style="text-align:right">来客数</th>
+              <th data-col="sales" style="text-align:right">売上</th>
+              <th data-col="avg" style="text-align:right">客単価</th>
+              <th style="width:100px">売上比</th>
+            </tr>
+          </thead>
+          <tbody id="dailyTableBody"></tbody>
+          <tfoot id="dailyTableFoot"></tfoot>
+        </table>
       </div>
     </div>
 
@@ -464,6 +575,21 @@ function buildDashboard(RAW) {
     '2025/07':'7月','2025/08':'8月','2025/09':'9月','2025/10':'10月',
     '2025/11':'11月','2025/12':'12月','2026/01':'1月*',
     '2026/02':'2月','2026/03':'3月†','2026/04':'4月','2026/05':'5月▲'
+  };
+
+  // 元データ（Usenレジ情報）GoogleスプレッドシートID
+  const SOURCE_IDS = {
+    '2025/07': '1MatNF0jeu7A98RRKXKQAm75QS2Qg4IoN4TsRS4C9tMc',
+    '2025/08': '1ylEim8b6oce8DuWoaHOODg3SnjWy3eleHCMGAjDRh-w',
+    '2025/09': '1vtjKIEYLOawsHoQmUK1zpjiWArrUQW_9T1x3tOiUjlE',
+    '2025/10': '1DamzNuUEn-UV47TcYD-oDjNbGOA1Cy98b1_Q9XCLL-I',
+    '2025/11': '1R6pqgig0moV0gVbCOx5Npsf1lYRyFZ_tKqi6CGr6xfs',
+    '2025/12': '1S9PQ226fqAWvx-jXpdvD8AIAFhewd6FVl6-lN6Jnd2M',
+    '2026/01': '1pUI0Bp7qyaC1yy2LRQL_bcl5lU2GEdBW01vJZze3bwY',
+    '2026/02': '1JVKmR-hb6Mz2Uh6K0XXvSOLBs2CcspWo_1a_NXmfE-w',
+    '2026/03': '1RWMcl42ZZ1n-2ru2pQbghaAuWEejcZ-cSP59UnXnAR4',
+    '2026/04': '1a3TPww5n8JMPwgCyvLJdYxlunNBdHUprI4xwyvnwSKA',
+    '2026/05': '1HKNe3KcKPB2aEbK7-sha14VocTooa4oQZxWw4wok9cM',
   };
 
   document.getElementById('headerDate').textContent =
@@ -653,6 +779,19 @@ function buildDashboard(RAW) {
     document.getElementById('detailSubtitle').textContent =
       `営業日数: ${md.days}日　月間売上: ¥${fmtNum(md.sales)}　来客数: ${fmtNum(md.customers)}人　客単価: ¥${fmtNum(md.avg_spend)}`;
 
+    // Source link
+    document.getElementById('sourceLabel').textContent = `元データ：Usenレジ情報（${LABELS[month]}）`;
+    const linkEl = document.getElementById('sourceLink');
+    const ssId = SOURCE_IDS[month];
+    if (ssId) {
+      linkEl.innerHTML = `<a class="source-link" href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank" rel="noopener">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Googleスプレッドシートで元データを確認
+      </a>`;
+    } else {
+      linkEl.innerHTML = `<span class="source-link-none">元データなし</span>`;
+    }
+
     // Daily bar
     const dailyEntries = Object.entries(md.daily || {}).sort(([a],[b]) => a.localeCompare(b));
     const dayLabels = dailyEntries.map(([d, v]) => `${parseInt(d.slice(-2))}日(${v.yobi})`);
@@ -679,6 +818,72 @@ function buildDashboard(RAW) {
           y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } }
         }
       }
+    });
+
+    // Daily table
+    const dailyEntries2 = Object.entries(md.daily || {}).sort(([a],[b]) => a.localeCompare(b));
+    const maxSaleForBar = Math.max(...dailyEntries2.map(([,v]) => v.sales), 1);
+
+    let sortCol = 'date', sortDir = 1;
+
+    function renderTable(entries) {
+      const body = document.getElementById('dailyTableBody');
+      body.innerHTML = '';
+      entries.forEach(([date, v]) => {
+        const avg = v.customers > 0 ? Math.round(v.sales / v.customers) : 0;
+        const barPct = Math.round(v.sales / maxSaleForBar * 100);
+        const yobiClass = v.yobi === '土' ? 'yobi-sat' : v.yobi === '日' ? 'yobi-sun' : '';
+        const day = date.slice(-2).replace(/^0/,'');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${date.slice(0,7)}/<strong>${day}</strong></td>
+          <td class="${yobiClass}">${v.yobi || '―'}</td>
+          <td class="num">${fmtNum(v.customers)}</td>
+          <td class="num">¥${fmtNum(v.sales)}</td>
+          <td class="num">¥${fmtNum(avg)}</td>
+          <td class="bar-cell"><div class="inline-bar" style="width:${barPct}%"></div> <span style="font-size:10px;color:var(--text-muted)">${barPct}%</span></td>
+        `;
+        tr.dataset.date = date;
+        tr.dataset.customers = v.customers;
+        tr.dataset.sales = v.sales;
+        tr.dataset.avg = avg;
+        body.appendChild(tr);
+      });
+
+      // Footer totals
+      const totC = entries.reduce((s,[,v]) => s + v.customers, 0);
+      const totS = entries.reduce((s,[,v]) => s + v.sales, 0);
+      const totA = totC > 0 ? Math.round(totS / totC) : 0;
+      const foot = document.getElementById('dailyTableFoot');
+      foot.innerHTML = `<tr class="tfoot-row">
+        <td colspan="2">合計 / 平均（${entries.length}日）</td>
+        <td class="num">${fmtNum(totC)}人</td>
+        <td class="num">¥${fmtNum(totS)}</td>
+        <td class="num">¥${fmtNum(totA)}</td>
+        <td></td>
+      </tr>`;
+    }
+
+    renderTable(dailyEntries2);
+
+    // Sortable headers
+    document.querySelectorAll('#dailyTable thead th[data-col]').forEach(th => {
+      th.onclick = () => {
+        const col = th.dataset.col;
+        if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+        document.querySelectorAll('#dailyTable thead th').forEach(t => t.classList.remove('sort-asc','sort-desc'));
+        th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+        const sorted = [...dailyEntries2].sort(([ad,av],[bd,bv]) => {
+          let a, b;
+          if (col === 'date')      { a = ad; b = bd; }
+          else if (col === 'yobi') { a = av.yobi || ''; b = bv.yobi || ''; }
+          else if (col === 'customers') { a = av.customers; b = bv.customers; }
+          else if (col === 'sales')     { a = av.sales; b = bv.sales; }
+          else if (col === 'avg')  { a = av.customers > 0 ? av.sales/av.customers : 0; b = bv.customers > 0 ? bv.sales/bv.customers : 0; }
+          return a < b ? -sortDir : a > b ? sortDir : 0;
+        });
+        renderTable(sorted);
+      };
     });
 
     // Slot donut
