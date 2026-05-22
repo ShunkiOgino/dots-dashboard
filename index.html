@@ -576,7 +576,12 @@ function buildDashboard(RAW) {
     '2026/02':'2月','2026/03':'3月†','2026/04':'4月','2026/05':'5月▲'
   };
 
-  const SOURCE_IDS = {}; // デモ版のためソースリンクなし
+  // デモ用スプレッドシート（全月共通）
+  const DEMO_SS_ID = '1uCJBNKHZaVS8kAmeMf-alEP8TZq8KOdXSvaqJTQFbIA';
+  const SOURCE_IDS = Object.fromEntries(
+    ['2025/07','2025/08','2025/09','2025/10','2025/11','2025/12',
+     '2026/01','2026/02','2026/03','2026/04','2026/05'].map(k => [k, DEMO_SS_ID])
+  );
 
   document.getElementById('headerDate').textContent =
     new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'});
