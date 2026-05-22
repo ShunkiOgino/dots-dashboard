@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>miobyDoTS 経営ダッシュボード</title>
+<title>飲食店 経営ダッシュボード</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -420,8 +420,8 @@
   <div class="logo">
     <div class="logo-dot">D</div>
     <div class="logo-text">
-      <h1>miobyDoTS</h1>
-      <p>経営ダッシュボード — Usen レジデータ 自動集計</p>
+      <h1>Restaurant Analytics</h1>
+      <p>経営ダッシュボード — POSレジデータ 自動集計</p>
     </div>
   </div>
   <div class="header-meta">
@@ -435,8 +435,7 @@
   <div class="data-note">
     <span>ℹ️</span>
     <span>
-      <strong>実データ</strong>: Usenレジ情報（2025年7月〜2026年5月）を自動集計。
-      1月はデータ未格納、3月はUsenファイルに2月分が収録（ソース側の仕様）、4月はGW分を含む。
+      <strong>デモデータ</strong>: POSレジ情報（2025年7月〜2026年5月）を自動集計したサンプルです。
     </span>
   </div>
 
@@ -558,7 +557,7 @@
 // ============================================================
 //  Data loading
 // ============================================================
-fetch('real_data.json')
+fetch('demo_data.json')
   .then(r => r.json())
   .then(buildDashboard)
   .catch(() => {
@@ -577,20 +576,7 @@ function buildDashboard(RAW) {
     '2026/02':'2月','2026/03':'3月†','2026/04':'4月','2026/05':'5月▲'
   };
 
-  // 元データ（Usenレジ情報）GoogleスプレッドシートID
-  const SOURCE_IDS = {
-    '2025/07': '1MatNF0jeu7A98RRKXKQAm75QS2Qg4IoN4TsRS4C9tMc',
-    '2025/08': '1ylEim8b6oce8DuWoaHOODg3SnjWy3eleHCMGAjDRh-w',
-    '2025/09': '1vtjKIEYLOawsHoQmUK1zpjiWArrUQW_9T1x3tOiUjlE',
-    '2025/10': '1DamzNuUEn-UV47TcYD-oDjNbGOA1Cy98b1_Q9XCLL-I',
-    '2025/11': '1R6pqgig0moV0gVbCOx5Npsf1lYRyFZ_tKqi6CGr6xfs',
-    '2025/12': '1S9PQ226fqAWvx-jXpdvD8AIAFhewd6FVl6-lN6Jnd2M',
-    '2026/01': '1pUI0Bp7qyaC1yy2LRQL_bcl5lU2GEdBW01vJZze3bwY',
-    '2026/02': '1JVKmR-hb6Mz2Uh6K0XXvSOLBs2CcspWo_1a_NXmfE-w',
-    '2026/03': '1RWMcl42ZZ1n-2ru2pQbghaAuWEejcZ-cSP59UnXnAR4',
-    '2026/04': '1a3TPww5n8JMPwgCyvLJdYxlunNBdHUprI4xwyvnwSKA',
-    '2026/05': '1HKNe3KcKPB2aEbK7-sha14VocTooa4oQZxWw4wok9cM',
-  };
+  const SOURCE_IDS = {}; // デモ版のためソースリンクなし
 
   document.getElementById('headerDate').textContent =
     new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'});
