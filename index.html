@@ -463,10 +463,25 @@
   /* ── Period KPI Strip ── */
   .period-kpi-strip {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
     margin-bottom: 16px;
   }
+
+  /* ── Cost Section ── */
+  .profit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .profit-badge.good { background: rgba(16,185,129,.18); color: #34d399; }
+  .profit-badge.warn { background: rgba(245,158,11,.18);  color: #fbbf24; }
+  .profit-badge.bad  { background: rgba(248, 113,113,.18); color: #f87171; }
   .period-kpi-item {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -712,6 +727,30 @@
       <div class="chart-subtitle">フード / ドリンク / スタンドッツ / 物販 etc.</div>
       <div class="chart-wrap" style="height:200px">
         <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 原価・利益率トレンド -->
+  <div class="section-label">原価・利益率</div>
+  <div class="chart-row chart-row-2" id="costTrendSection">
+    <div class="chart-card">
+      <div class="chart-title">月別原価推移</div>
+      <div class="chart-subtitle">フード原価・ドリンク原価（積み上げ）／ 右軸：全体利益率</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="costTrendChart"></canvas>
+      </div>
+      <div class="slot-legend">
+        <div class="slot-item"><div class="slot-dot" style="background:#f59e0b"></div>フード原価</div>
+        <div class="slot-item"><div class="slot-dot" style="background:#3b82f6"></div>ドリンク原価</div>
+        <div class="slot-item"><div class="slot-dot" style="background:#10b981;border-radius:50%"></div>利益率（右軸）</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">業者別コスト TOP8（全期間）</div>
+      <div class="chart-subtitle">フード・ドリンク合算の主要仕入れ先</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="supplierChart"></canvas>
       </div>
     </div>
   </div>
@@ -967,6 +1006,93 @@ function buildDashboard(RAW) {
     }
   });
 
+  // ── Cost Trend + Supplier Charts ─────────────────────────────
+  const costMonthly = MONTH_ORDER.map(k => {
+    const m = RAW[k];
+    const cost = m?.cost || {};
+    return {
+      food: cost.food || 0, drink: cost.drink || 0, total: cost.total || 0,
+      sales: m?.sales || 0,
+      profitRate: (m?.sales > 0 && cost.total > 0)
+        ? +((m.sales - cost.total) / m.sales * 100).toFixed(1) : null,
+    };
+  });
+  const hasCostData = costMonthly.some(c => c.total > 0);
+
+  if (!hasCostData) {
+    document.getElementById('costTrendSection').innerHTML =
+      '<div class="chart-card" style="grid-column:1/-1;padding:32px;text-align:center;color:var(--text-muted);font-size:13px">原価データ未取得。<code>collect_all_months.py</code> を実行すると表示されます。</div>';
+  } else {
+    new Chart(document.getElementById('costTrendChart'), {
+      data: {
+        labels: monthLabels,
+        datasets: [
+          {
+            type: 'bar', label: 'フード原価',
+            data: costMonthly.map(c => c.food || null),
+            backgroundColor: 'rgba(245,158,11,.75)',
+            stack: 's1', borderRadius: 0, yAxisID: 'y',
+          },
+          {
+            type: 'bar', label: 'ドリンク原価',
+            data: costMonthly.map(c => c.drink || null),
+            backgroundColor: 'rgba(59,130,246,.75)',
+            stack: 's1', borderRadius: 4, yAxisID: 'y',
+          },
+          {
+            type: 'line', label: '利益率(%)',
+            data: costMonthly.map(c => c.profitRate),
+            borderColor: '#10b981', pointBackgroundColor: '#10b981',
+            pointRadius: 4, tension: .3, yAxisID: 'y2', spanGaps: true,
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          tooltip: { mode: 'index', callbacks: {
+            label: ctx => ctx.dataset.yAxisID === 'y2'
+              ? `利益率: ${ctx.raw != null ? ctx.raw.toFixed(1)+'%' : 'N/A'}`
+              : `${ctx.dataset.label}: ¥${fmtNum(ctx.raw)}`
+          }}
+        },
+        scales: {
+          x: { stacked: true, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#1e293b' } },
+          y: { stacked: true, ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
+          y2: { position: 'right', min: 0, max: 100, ticks: { color: '#10b981', font: { size: 10 }, callback: v => v+'%' }, grid: { display: false } },
+        }
+      }
+    });
+
+    // Supplier horizontal bar
+    const allSuppliers = {};
+    MONTH_ORDER.forEach(k => {
+      const cost = RAW[k]?.cost;
+      if (!cost) return;
+      Object.entries(cost.food_suppliers  || {}).forEach(([s, v]) => { allSuppliers[s] = (allSuppliers[s]||0) + v; });
+      Object.entries(cost.drink_suppliers || {}).forEach(([s, v]) => { allSuppliers[s] = (allSuppliers[s]||0) + v; });
+    });
+    const topSup = Object.entries(allSuppliers).sort((a,b)=>b[1]-a[1]).slice(0, 8);
+    if (topSup.length) {
+      new Chart(document.getElementById('supplierChart'), {
+        type: 'bar',
+        data: {
+          labels: topSup.map(([k]) => k.length > 10 ? k.slice(0,10)+'…' : k),
+          datasets: [{ data: topSup.map(([,v])=>v), backgroundColor: ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#f97316','#06b6d4','#84cc16'], borderRadius: 3 }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}` } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
+            y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+  }
+
   // ── Slot Trend Stacked Bar ─────────────────────────────────
   const slotColors = { 'ランチ': '#f59e0b', 'カフェ': '#10b981', 'ディナー': '#3b82f6', 'その他': '#475569' };
   const slotKeys = ['ランチ', 'カフェ', 'ディナー', 'その他'];
@@ -1092,6 +1218,7 @@ function buildDashboard(RAW) {
       time_slots: md.time_slots, categories: md.categories,
       top_products: md.top_products || [],
       daily: md.daily || {},
+      cost: md.cost || null,
     };
   }
 
@@ -1120,6 +1247,19 @@ function buildDashboard(RAW) {
     });
     const totS = Object.values(aggDaily).reduce((s, v) => s + v.sales, 0);
     const totC = Object.values(aggDaily).reduce((s, v) => s + v.customers, 0);
+
+    // Aggregate cost
+    const aggCost = { food: 0, drink: 0, total: 0, food_suppliers: {}, drink_suppliers: {} };
+    keys.forEach(k => {
+      const c = RAW[k]?.cost;
+      if (!c) return;
+      aggCost.food  += c.food  || 0;
+      aggCost.drink += c.drink || 0;
+      aggCost.total += c.total || 0;
+      Object.entries(c.food_suppliers  || {}).forEach(([s,v]) => { aggCost.food_suppliers[s]  = (aggCost.food_suppliers[s]  || 0) + v; });
+      Object.entries(c.drink_suppliers || {}).forEach(([s,v]) => { aggCost.drink_suppliers[s] = (aggCost.drink_suppliers[s] || 0) + v; });
+    });
+
     return {
       isCustom: true,
       title: `${LABELS[from]}〜${LABELS[to]}（${keys.length}ヶ月）`,
@@ -1131,6 +1271,7 @@ function buildDashboard(RAW) {
         .sort(([, a], [, b]) => b.sales - a.sales).slice(0, 30)
         .map(([name, v]) => ({ name, cat: v.cat, qty: v.qty, sales: v.sales })),
       daily: aggDaily,
+      cost: aggCost.total > 0 ? aggCost : null,
     };
   }
 
@@ -1158,12 +1299,24 @@ function buildDashboard(RAW) {
     // Period KPI strip
     const strip = document.getElementById('periodKpiStrip');
     strip.innerHTML = '';
-    [
+    const kpiItems = [
       { label: '売上合計',   value: fmtYen(data.totalSales),              color: '#f59e0b' },
       { label: '来客数',     value: fmtNum(data.totalCustomers) + '人',    color: '#3b82f6' },
       { label: '客単価',     value: '¥' + fmtNum(data.avgSpend),           color: '#8b5cf6' },
       { label: '営業日数',   value: data.days + '日',                      color: '#10b981' },
-    ].forEach(kpi => {
+    ];
+    if (data.cost && data.cost.total > 0) {
+      const profitRate = data.totalSales > 0
+        ? ((data.totalSales - data.cost.total) / data.totalSales * 100).toFixed(1) : null;
+      const rateColor = profitRate >= 65 ? '#10b981' : profitRate >= 55 ? '#f59e0b' : '#f87171';
+      kpiItems.push(
+        { label: '食材費合計',   value: fmtYen(data.cost.total),  color: '#f97316' },
+        { label: '全体利益率',   value: profitRate != null ? profitRate+'%' : 'N/A', color: rateColor },
+        { label: 'フード原価',   value: fmtYen(data.cost.food),   color: '#f59e0b' },
+        { label: 'ドリンク原価', value: fmtYen(data.cost.drink),  color: '#3b82f6' },
+      );
+    }
+    kpiItems.forEach(kpi => {
       const el = document.createElement('div');
       el.className = 'period-kpi-item';
       el.style.setProperty('--pk-color', kpi.color);
