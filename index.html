@@ -557,7 +557,7 @@
 // ============================================================
 //  Data loading
 // ============================================================
-fetch('https://script.google.com/macros/s/AKfycbym7Qr45jsOHO1JazpjhO7-K3vL7DSJlYgHVo7KMoYA5ZbRJNmSwHkGiCiPxweoYllpbw/exec')
+fetch('demo_data.json')
   .then(r => r.json())
   .then(buildDashboard)
   .catch(() => {
