@@ -401,6 +401,127 @@
   .inline-bar { height: 4px; border-radius: 2px; background: rgba(245,158,11,.6); display: inline-block; vertical-align: middle; transition: width .3s; }
   .tfoot-row td { background: var(--surface2); font-weight: 700; border-top: 2px solid var(--border); }
 
+  /* ── Period Selector ── */
+  .period-selector {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .period-mode-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .period-mode-tab {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .2s;
+  }
+  .period-mode-tab:hover { border-color: var(--accent); color: var(--text); }
+  .period-mode-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+  .period-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .period-select:focus { border-color: var(--accent); }
+  .period-arrow { font-size: 16px; color: var(--text-muted); }
+  .period-apply-btn {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    padding: 7px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity .2s;
+  }
+  .period-apply-btn:hover { opacity: .8; }
+
+  /* ── Period KPI Strip ── */
+  .period-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .period-kpi-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .period-kpi-item::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--pk-color, var(--accent));
+  }
+  .period-kpi-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 4px;
+  }
+  .period-kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+  }
+
+  /* ── Category Filter ── */
+  .cat-filter-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .cat-filter-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .cat-filter-btn:hover { border-color: var(--accent4); color: var(--text); }
+  .cat-filter-btn.active {
+    background: rgba(139,92,246,.2);
+    border-color: var(--accent4);
+    color: var(--accent4);
+    font-weight: 600;
+  }
+
   /* ── Product Pickup ── */
   .pickup-controls {
     display: flex;
@@ -595,11 +716,30 @@
     </div>
   </div>
 
-  <!-- Month detail -->
-  <div class="section-label">月別詳細</div>
-  <div class="month-tabs" id="monthTabs"></div>
+  <!-- 期間別詳細分析 -->
+  <div class="section-label">期間別詳細分析</div>
 
-  <!-- Source link bar -->
+  <!-- Period selector -->
+  <div class="period-selector">
+    <div class="period-mode-tabs">
+      <button class="period-mode-tab active" data-mode="monthly">📅 月別</button>
+      <button class="period-mode-tab" data-mode="custom">📆 期間指定</button>
+    </div>
+    <div id="monthlyModeArea">
+      <div class="month-tabs" id="monthTabs"></div>
+    </div>
+    <div id="customModeArea" style="display:none">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-size:12px; color:var(--text-muted)">集計期間:</span>
+        <select id="fromMonth" class="period-select"></select>
+        <span class="period-arrow">〜</span>
+        <select id="toMonth" class="period-select"></select>
+        <button class="period-apply-btn" id="applyPeriod">集計</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Source bar (monthly mode) -->
   <div class="source-bar" id="sourceBar">
     <div class="source-bar-label">
       <span>📂</span>
@@ -608,16 +748,18 @@
     <div id="sourceLink"></div>
   </div>
 
+  <!-- Period KPI strip -->
+  <div class="period-kpi-strip" id="periodKpiStrip"></div>
+
+  <!-- Row: daily chart + table | slot donut -->
   <div class="detail-row">
-    <!-- Daily chart + table -->
     <div class="chart-card" style="grid-column: span 2">
       <div class="chart-title" id="detailTitle">日次売上</div>
       <div class="chart-subtitle" id="detailSubtitle"></div>
       <div class="chart-wrap" style="height:180px">
         <canvas id="dailyChart"></canvas>
       </div>
-      <!-- Daily table -->
-      <div class="table-wrap" style="max-height:320px; overflow-y:auto; margin-top:16px;">
+      <div id="dailyTableWrap" class="table-wrap" style="max-height:280px; overflow-y:auto; margin-top:16px;">
         <table class="daily-table" id="dailyTable">
           <thead>
             <tr>
@@ -634,8 +776,6 @@
         </table>
       </div>
     </div>
-
-    <!-- Time slot donut -->
     <div class="chart-card">
       <div class="chart-title">時間帯構成</div>
       <div class="chart-wrap" style="height:160px">
@@ -645,18 +785,22 @@
     </div>
   </div>
 
-  <!-- Products -->
+  <!-- Row: category | products (with cat filter) -->
   <div class="chart-row chart-row-2">
     <div class="chart-card">
-      <div class="chart-title" id="productTitle">TOP 10 商品</div>
-      <div class="chart-subtitle">売上金額ランキング（選択月）</div>
-      <div class="chart-wrap" style="height:260px">
-        <canvas id="productChart"></canvas>
+      <div class="chart-title" id="periodCatTitle">カテゴリ別売上</div>
+      <div class="chart-subtitle" id="periodCatSubtitle"></div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="periodCategoryChart"></canvas>
       </div>
     </div>
     <div class="chart-card">
-      <div class="chart-title" id="productListTitle">商品リスト</div>
-      <ul class="product-list" id="productList"></ul>
+      <div class="chart-title" id="productTitle">人気商品</div>
+      <div class="cat-filter-row" id="catFilterRow"></div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="productChart"></canvas>
+      </div>
+      <ul class="product-list" id="productList" style="margin-top:8px"></ul>
     </div>
   </div>
 
@@ -877,10 +1021,16 @@ function buildDashboard(RAW) {
     }
   });
 
-  // ── Month detail tabs ──────────────────────────────────────
-  let selectedMonth = '2026/05';
-  let dailyChart = null, slotDonut = null, productChart = null;
+  // ── 期間別詳細分析 ─────────────────────────────────────────
+  let selectedMonth = MONTH_ORDER.filter(k => RAW[k]?.sales > 0).slice(-1)[0] || MONTH_ORDER.slice(-1)[0];
+  let periodMode = 'monthly';
+  let customFrom = MONTH_ORDER[0], customTo = MONTH_ORDER[MONTH_ORDER.length - 1];
+  let selectedCatFilter = 'all';
+  let dailyChart = null, slotDonut = null, productChart = null, periodCatChart = null;
+  let sortCol = 'date', sortDir = 1;
+  let currentProducts = [];
 
+  // Month tabs
   const tabBar = document.getElementById('monthTabs');
   MONTH_ORDER.forEach(k => {
     const btn = document.createElement('button');
@@ -892,210 +1042,328 @@ function buildDashboard(RAW) {
         document.querySelectorAll('.month-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedMonth = k;
-        renderDetail(k);
+        selectedCatFilter = 'all';
+        renderAnalysis(buildMonthData(k));
       });
     }
     tabBar.appendChild(btn);
   });
 
-  function renderDetail(month) {
+  // Custom period selects
+  MONTH_ORDER.forEach(k => {
+    document.getElementById('fromMonth').add(new Option(LABELS[k], k));
+    document.getElementById('toMonth').add(new Option(LABELS[k], k));
+  });
+  document.getElementById('fromMonth').value = customFrom;
+  document.getElementById('toMonth').value   = customTo;
+
+  // Period mode toggle
+  document.querySelectorAll('.period-mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.period-mode-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      periodMode = btn.dataset.mode;
+      const isM = periodMode === 'monthly';
+      document.getElementById('monthlyModeArea').style.display  = isM ? '' : 'none';
+      document.getElementById('customModeArea').style.display   = isM ? 'none' : '';
+      document.getElementById('sourceBar').style.display        = isM ? '' : 'none';
+      document.getElementById('dailyTableWrap').style.display   = isM ? '' : 'none';
+      selectedCatFilter = 'all';
+      renderAnalysis(isM ? buildMonthData(selectedMonth) : aggregatePeriod(customFrom, customTo));
+    });
+  });
+
+  document.getElementById('applyPeriod').addEventListener('click', () => {
+    customFrom = document.getElementById('fromMonth').value;
+    customTo   = document.getElementById('toMonth').value;
+    if (customFrom > customTo) { [customFrom, customTo] = [customTo, customFrom]; }
+    selectedCatFilter = 'all';
+    renderAnalysis(aggregatePeriod(customFrom, customTo));
+  });
+
+  // ── データ構造ビルダ ──────────────────────────────────────
+  function buildMonthData(month) {
     const md = RAW[month];
-    if (!md || md.sales === 0) return;
+    return {
+      isCustom: false, month,
+      title: LABELS[month],
+      totalSales: md.sales, totalCustomers: md.customers,
+      avgSpend: md.avg_spend, days: md.days,
+      time_slots: md.time_slots, categories: md.categories,
+      top_products: md.top_products || [],
+      daily: md.daily || {},
+    };
+  }
 
-    document.getElementById('detailTitle').textContent = `日次売上（${LABELS[month]}）`;
-    document.getElementById('detailSubtitle').textContent =
-      `営業日数: ${md.days}日　月間売上: ¥${fmtNum(md.sales)}　来客数: ${fmtNum(md.customers)}人　客単価: ¥${fmtNum(md.avg_spend)}`;
+  function aggregatePeriod(from, to) {
+    const keys = MONTH_ORDER.filter(k => k >= from && k <= to && RAW[k]?.sales > 0);
+    const aggDaily = {}, aggSlots = {}, aggCats = {}, aggProd = {};
+    keys.forEach(k => {
+      const md = RAW[k];
+      Object.assign(aggDaily, md.daily || {});
+      Object.entries(md.time_slots || {}).forEach(([s, v]) => {
+        if (!aggSlots[s]) aggSlots[s] = { customers: 0, sales: 0 };
+        aggSlots[s].customers += v.customers;
+        aggSlots[s].sales     += v.sales;
+      });
+      Object.entries(md.categories || {}).forEach(([c, v]) => {
+        const lb = normCat(c);
+        if (!aggCats[lb]) aggCats[lb] = { sales: 0, qty: 0 };
+        aggCats[lb].sales += v.sales;
+        aggCats[lb].qty   += v.qty;
+      });
+      (md.top_products || []).forEach(p => {
+        if (!aggProd[p.name]) aggProd[p.name] = { sales: 0, qty: 0, cat: p.cat || '' };
+        aggProd[p.name].sales += p.sales;
+        aggProd[p.name].qty   += p.qty;
+      });
+    });
+    const totS = Object.values(aggDaily).reduce((s, v) => s + v.sales, 0);
+    const totC = Object.values(aggDaily).reduce((s, v) => s + v.customers, 0);
+    return {
+      isCustom: true,
+      title: `${LABELS[from]}〜${LABELS[to]}（${keys.length}ヶ月）`,
+      totalSales: totS, totalCustomers: totC,
+      avgSpend: totC > 0 ? Math.round(totS / totC) : 0,
+      days: Object.keys(aggDaily).length,
+      time_slots: aggSlots, categories: aggCats,
+      top_products: Object.entries(aggProd)
+        .sort(([, a], [, b]) => b.sales - a.sales).slice(0, 30)
+        .map(([name, v]) => ({ name, cat: v.cat, qty: v.qty, sales: v.sales })),
+      daily: aggDaily,
+    };
+  }
 
-    // Source link
-    document.getElementById('sourceLabel').textContent = `元データ：Usenレジ情報（${LABELS[month]}）`;
-    const linkEl = document.getElementById('sourceLink');
-    const ssId = SOURCE_IDS[month];
-    if (ssId) {
-      linkEl.innerHTML = `<a class="source-link" href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank" rel="noopener">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Googleスプレッドシートで元データを確認
-      </a>`;
-    } else {
-      linkEl.innerHTML = `<span class="source-link-none">元データなし</span>`;
+  // ── メイン描画 ────────────────────────────────────────────
+  function renderAnalysis(data) {
+    if (!data) return;
+
+    // Source bar
+    if (!data.isCustom) {
+      document.getElementById('sourceLabel').textContent = `元データ：Usenレジ情報（${data.title}）`;
+      const linkEl = document.getElementById('sourceLink');
+      const ssId = SOURCE_IDS[data.month];
+      linkEl.innerHTML = ssId
+        ? `<a class="source-link" href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank" rel="noopener">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Googleスプレッドシートで元データを確認</a>`
+        : `<span class="source-link-none">元データなし</span>`;
     }
 
-    // Daily bar
-    const dailyEntries = Object.entries(md.daily || {}).sort(([a],[b]) => a.localeCompare(b));
-    const dayLabels = dailyEntries.map(([d, v]) => `${parseInt(d.slice(-2))}日(${v.yobi})`);
-    const daySales  = dailyEntries.map(([,v]) => v.sales);
-    const maxSale   = Math.max(...daySales);
+    // Detail header
+    document.getElementById('detailTitle').textContent    = `日次売上（${data.title}）`;
+    document.getElementById('detailSubtitle').textContent =
+      `営業日数: ${data.days}日　売上: ¥${fmtNum(data.totalSales)}　来客: ${fmtNum(data.totalCustomers)}人　客単価: ¥${fmtNum(data.avgSpend)}`;
+
+    // Period KPI strip
+    const strip = document.getElementById('periodKpiStrip');
+    strip.innerHTML = '';
+    [
+      { label: '売上合計',   value: fmtYen(data.totalSales),              color: '#f59e0b' },
+      { label: '来客数',     value: fmtNum(data.totalCustomers) + '人',    color: '#3b82f6' },
+      { label: '客単価',     value: '¥' + fmtNum(data.avgSpend),           color: '#8b5cf6' },
+      { label: '営業日数',   value: data.days + '日',                      color: '#10b981' },
+    ].forEach(kpi => {
+      const el = document.createElement('div');
+      el.className = 'period-kpi-item';
+      el.style.setProperty('--pk-color', kpi.color);
+      el.innerHTML = `<div class="period-kpi-label">${kpi.label}</div>
+        <div class="period-kpi-value" style="color:${kpi.color}">${kpi.value}</div>`;
+      strip.appendChild(el);
+    });
+
+    // Daily chart
+    const dailyEntries = Object.entries(data.daily).sort(([a], [b]) => a.localeCompare(b));
+    const daySales = dailyEntries.map(([, v]) => v.sales);
+    const maxSale  = Math.max(...daySales, 1);
+    const dayLabels = dailyEntries.map(([d, v]) =>
+      data.isCustom
+        ? `${d.slice(5, 7)}/${parseInt(d.slice(-2))}(${v.yobi || ''})`
+        : `${parseInt(d.slice(-2))}日(${v.yobi || ''})`);
 
     if (dailyChart) dailyChart.destroy();
     dailyChart = new Chart(document.getElementById('dailyChart'), {
       type: 'bar',
       data: {
         labels: dayLabels,
-        datasets: [{
-          data: daySales,
-          backgroundColor: daySales.map(s => `rgba(245,158,11,${0.3 + 0.7*(s/maxSale)})`),
-          borderRadius: 3,
-        }]
+        datasets: [{ data: daySales, backgroundColor: daySales.map(s => `rgba(245,158,11,${0.3 + 0.7 * (s / maxSale)})`), borderRadius: 3 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-                   tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}` } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}` } } },
         scales: {
           x: { ticks: { color: '#94a3b8', font: { size: 9 }, maxRotation: 45 }, grid: { display: false } },
-          y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } }
+          y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v / 10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } }
         }
       }
     });
 
-    // Daily table
-    const dailyEntries2 = Object.entries(md.daily || {}).sort(([a],[b]) => a.localeCompare(b));
-    const maxSaleForBar = Math.max(...dailyEntries2.map(([,v]) => v.sales), 1);
-
-    let sortCol = 'date', sortDir = 1;
-
-    function renderTable(entries) {
-      const body = document.getElementById('dailyTableBody');
-      body.innerHTML = '';
-      entries.forEach(([date, v]) => {
-        const avg = v.customers > 0 ? Math.round(v.sales / v.customers) : 0;
-        const barPct = Math.round(v.sales / maxSaleForBar * 100);
-        const yobiClass = v.yobi === '土' ? 'yobi-sat' : v.yobi === '日' ? 'yobi-sun' : '';
-        const day = date.slice(-2).replace(/^0/,'');
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${date.slice(0,7)}/<strong>${day}</strong></td>
-          <td class="${yobiClass}">${v.yobi || '―'}</td>
-          <td class="num">${fmtNum(v.customers)}</td>
-          <td class="num">¥${fmtNum(v.sales)}</td>
-          <td class="num">¥${fmtNum(avg)}</td>
-          <td class="bar-cell"><div class="inline-bar" style="width:${barPct}%"></div> <span style="font-size:10px;color:var(--text-muted)">${barPct}%</span></td>
-        `;
-        tr.dataset.date = date;
-        tr.dataset.customers = v.customers;
-        tr.dataset.sales = v.sales;
-        tr.dataset.avg = avg;
-        body.appendChild(tr);
-      });
-
-      // Footer totals
-      const totC = entries.reduce((s,[,v]) => s + v.customers, 0);
-      const totS = entries.reduce((s,[,v]) => s + v.sales, 0);
-      const totA = totC > 0 ? Math.round(totS / totC) : 0;
-      const foot = document.getElementById('dailyTableFoot');
-      foot.innerHTML = `<tr class="tfoot-row">
-        <td colspan="2">合計 / 平均（${entries.length}日）</td>
-        <td class="num">${fmtNum(totC)}人</td>
-        <td class="num">¥${fmtNum(totS)}</td>
-        <td class="num">¥${fmtNum(totA)}</td>
-        <td></td>
-      </tr>`;
-    }
-
-    renderTable(dailyEntries2);
-
-    // Sortable headers
-    document.querySelectorAll('#dailyTable thead th[data-col]').forEach(th => {
-      th.onclick = () => {
-        const col = th.dataset.col;
-        if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
-        document.querySelectorAll('#dailyTable thead th').forEach(t => t.classList.remove('sort-asc','sort-desc'));
-        th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
-        const sorted = [...dailyEntries2].sort(([ad,av],[bd,bv]) => {
-          let a, b;
-          if (col === 'date')      { a = ad; b = bd; }
-          else if (col === 'yobi') { a = av.yobi || ''; b = bv.yobi || ''; }
-          else if (col === 'customers') { a = av.customers; b = bv.customers; }
-          else if (col === 'sales')     { a = av.sales; b = bv.sales; }
-          else if (col === 'avg')  { a = av.customers > 0 ? av.sales/av.customers : 0; b = bv.customers > 0 ? bv.sales/bv.customers : 0; }
-          return a < b ? -sortDir : a > b ? sortDir : 0;
-        });
-        renderTable(sorted);
-      };
-    });
+    // Daily table (monthly mode only)
+    if (!data.isCustom) renderTable(dailyEntries);
 
     // Slot donut
-    const slots = md.time_slots || {};
-    const slotData = slotKeys.map(s => slots[s]?.sales || 0);
-    const slotTotalSales = slotData.reduce((a,b) => a+b, 0);
-
+    const slots = data.time_slots || {};
+    const slotKeys2  = ['ランチ', 'カフェ', 'ディナー', 'その他'];
+    const slotColors2 = { 'ランチ': '#f59e0b', 'カフェ': '#10b981', 'ディナー': '#3b82f6', 'その他': '#475569' };
+    const slotData   = slotKeys2.map(s => slots[s]?.sales || 0);
+    const slotTotal  = slotData.reduce((a, b) => a + b, 0);
     if (slotDonut) slotDonut.destroy();
     slotDonut = new Chart(document.getElementById('slotDonut'), {
       type: 'doughnut',
       data: {
-        labels: slotKeys,
-        datasets: [{ data: slotData, backgroundColor: slotKeys.map(s => slotColors[s]), borderWidth: 0, hoverOffset: 6 }]
+        labels: slotKeys2,
+        datasets: [{ data: slotData, backgroundColor: slotKeys2.map(s => slotColors2[s]), borderWidth: 0, hoverOffset: 6 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-                   tooltip: { callbacks: { label: ctx => `${ctx.label}: ¥${fmtNum(ctx.raw)} (${pct(ctx.raw, slotTotalSales)}%)` } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.label}: ¥${fmtNum(ctx.raw)} (${pct(ctx.raw, slotTotal)}%)` } } },
         cutout: '60%'
       }
     });
-
-    // Slot stats
     const statsEl = document.getElementById('slotStats');
     statsEl.innerHTML = '';
-    slotKeys.forEach(s => {
+    slotKeys2.forEach(s => {
       if (!slots[s]) return;
       const el = document.createElement('div');
       el.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:10px;';
-      el.innerHTML = `<div style="width:8px;height:8px;border-radius:2px;background:${slotColors[s]};flex-shrink:0"></div>
-        <div><span style="color:var(--text-muted)">${s}</span><br>
-        <strong style="font-size:12px">¥${fmtNum(slots[s].sales)}</strong></div>`;
+      el.innerHTML = `<div style="width:8px;height:8px;border-radius:2px;background:${slotColors2[s]};flex-shrink:0"></div>
+        <div><span style="color:var(--text-muted)">${s}</span><br><strong style="font-size:12px">¥${fmtNum(slots[s].sales)}</strong></div>`;
       statsEl.appendChild(el);
     });
 
-    // Top products
-    const products = (md.top_products || []).slice(0, 10);
-    document.getElementById('productTitle').textContent = `TOP ${products.length} 商品（${LABELS[month]}）`;
-    document.getElementById('productListTitle').textContent = `商品リスト（${LABELS[month]}）`;
+    // Category donut
+    const cats = data.categories || {};
+    const cSorted = Object.entries(cats).sort(([, a], [, b]) => b.sales - a.sales).slice(0, 6);
+    const cColors  = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
+    document.getElementById('periodCatTitle').textContent    = `カテゴリ別売上（${data.title}）`;
+    document.getElementById('periodCatSubtitle').textContent = `全${Object.keys(cats).length}カテゴリ`;
+    if (periodCatChart) periodCatChart.destroy();
+    periodCatChart = new Chart(document.getElementById('periodCategoryChart'), {
+      type: 'doughnut',
+      data: {
+        labels: cSorted.map(([k]) => k),
+        datasets: [{ data: cSorted.map(([, v]) => v.sales), backgroundColor: cColors, borderWidth: 0, hoverOffset: 8 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 } },
+          tooltip: { callbacks: { label: ctx => ` ¥${fmtNum(ctx.raw)} (${pct(ctx.raw, cSorted.reduce((s, [, v]) => s + v.sales, 0))}%)` } }
+        },
+        cutout: '62%'
+      }
+    });
+
+    // Products with category filter
+    renderProducts(data.top_products || [], data.title);
+  }
+
+  function renderProducts(products, titleSuffix) {
+    currentProducts = products;
+    // Build category filter
+    const availableCats = [...new Set(products.map(p => p.cat || 'その他'))].sort();
+    const filterRow = document.getElementById('catFilterRow');
+    filterRow.innerHTML = '';
+    ['全て', ...availableCats].forEach(cat => {
+      const isActive = (cat === '全て' && selectedCatFilter === 'all') || cat === selectedCatFilter;
+      const count    = cat === '全て' ? products.length : products.filter(p => (p.cat || 'その他') === cat).length;
+      const btn = document.createElement('button');
+      btn.className = 'cat-filter-btn' + (isActive ? ' active' : '');
+      btn.innerHTML = `${cat} <span style="opacity:.6">${count}</span>`;
+      btn.addEventListener('click', () => {
+        selectedCatFilter = cat === '全て' ? 'all' : cat;
+        renderProducts(currentProducts, titleSuffix);
+      });
+      filterRow.appendChild(btn);
+    });
+
+    const filtered = selectedCatFilter === 'all' ? products : products.filter(p => (p.cat || 'その他') === selectedCatFilter);
+    const top10 = filtered.slice(0, 10);
+    document.getElementById('productTitle').textContent = `人気商品 TOP${top10.length}（${titleSuffix}）`;
 
     if (productChart) productChart.destroy();
     productChart = new Chart(document.getElementById('productChart'), {
       type: 'bar',
       data: {
-        labels: products.map(p => p.name.length > 12 ? p.name.slice(0,12)+'…' : p.name),
-        datasets: [{
-          data: products.map(p => p.sales),
-          backgroundColor: 'rgba(139,92,246,.75)',
-          borderRadius: 3,
-        }]
+        labels: top10.map(p => p.name.length > 12 ? p.name.slice(0, 12) + '…' : p.name),
+        datasets: [{ data: top10.map(p => p.sales), backgroundColor: 'rgba(139,92,246,.75)', borderRadius: 3 }]
       },
       options: {
-        indexAxis: 'y',
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-                   tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}（${products[ctx.dataIndex].qty}個）` } } },
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `¥${fmtNum(ctx.raw)}（${top10[ctx.dataIndex].qty}個）` } } },
         scales: {
-          x: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v/10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
-          y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+          x: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => `¥${(v / 10000).toFixed(0)}万` }, grid: { color: 'rgba(255,255,255,.04)' } },
+          y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }
         }
       }
     });
 
-    // Product list
     const listEl = document.getElementById('productList');
     listEl.innerHTML = '';
-    const maxSales = products[0]?.sales || 1;
-    products.forEach((p, i) => {
+    const maxSales = top10[0]?.sales || 1;
+    top10.forEach((p, i) => {
       const li = document.createElement('li');
       li.className = 'product-item';
       li.innerHTML = `
-        <div class="product-rank ${i<3?'rank-'+(i+1):''}">${i+1}</div>
+        <div class="product-rank ${i < 3 ? 'rank-' + (i + 1) : ''}">${i + 1}</div>
         <div class="product-name">${p.name}</div>
         <div class="product-bar-wrap">
-          <div class="product-bar-bg">
-            <div class="product-bar-fill" style="width:${pct(p.sales,maxSales)}%"></div>
-          </div>
+          <div class="product-bar-bg"><div class="product-bar-fill" style="width:${pct(p.sales, maxSales)}%"></div></div>
         </div>
-        <div class="product-qty">${p.qty}個</div>
-      `;
+        <div class="product-qty">${p.qty}個</div>`;
       listEl.appendChild(li);
     });
   }
 
-  renderDetail(selectedMonth);
+  function renderTable(entries) {
+    const maxBar = Math.max(...entries.map(([, v]) => v.sales), 1);
+    const body = document.getElementById('dailyTableBody');
+    body.innerHTML = '';
+    entries.forEach(([date, v]) => {
+      const avg = v.customers > 0 ? Math.round(v.sales / v.customers) : 0;
+      const barPct = Math.round(v.sales / maxBar * 100);
+      const yobiClass = v.yobi === '土' ? 'yobi-sat' : v.yobi === '日' ? 'yobi-sun' : '';
+      const day = date.slice(-2).replace(/^0/, '');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${date.slice(0,7)}/<strong>${day}</strong></td>
+        <td class="${yobiClass}">${v.yobi || '―'}</td>
+        <td class="num">${fmtNum(v.customers)}</td>
+        <td class="num">¥${fmtNum(v.sales)}</td>
+        <td class="num">¥${fmtNum(avg)}</td>
+        <td class="bar-cell"><div class="inline-bar" style="width:${barPct}%"></div> <span style="font-size:10px;color:var(--text-muted)">${barPct}%</span></td>`;
+      tr.dataset.date = date; tr.dataset.customers = v.customers; tr.dataset.sales = v.sales; tr.dataset.avg = avg;
+      body.appendChild(tr);
+    });
+    const totC = entries.reduce((s, [, v]) => s + v.customers, 0);
+    const totS = entries.reduce((s, [, v]) => s + v.sales, 0);
+    document.getElementById('dailyTableFoot').innerHTML = `<tr class="tfoot-row">
+      <td colspan="2">合計（${entries.length}日）</td>
+      <td class="num">${fmtNum(totC)}人</td>
+      <td class="num">¥${fmtNum(totS)}</td>
+      <td class="num">¥${fmtNum(totC > 0 ? Math.round(totS / totC) : 0)}</td>
+      <td></td></tr>`;
+    // Sortable headers
+    document.querySelectorAll('#dailyTable thead th[data-col]').forEach(th => {
+      th.onclick = () => {
+        const col = th.dataset.col;
+        if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+        document.querySelectorAll('#dailyTable thead th').forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+        th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+        const sorted = [...entries].sort(([ad, av], [bd, bv]) => {
+          const [a, b] = col === 'date' ? [ad, bd]
+            : col === 'yobi'      ? [av.yobi || '', bv.yobi || '']
+            : col === 'customers' ? [av.customers, bv.customers]
+            : col === 'sales'     ? [av.sales, bv.sales]
+            : [av.customers > 0 ? av.sales / av.customers : 0, bv.customers > 0 ? bv.sales / bv.customers : 0];
+          return a < b ? -sortDir : a > b ? sortDir : 0;
+        });
+        renderTable(sorted);
+      };
+    });
+  }
+
+  renderAnalysis(buildMonthData(selectedMonth));
 
   // ── Product Pickup ──────────────────────────────────────────
   // Build master product DB from all months' top_products
